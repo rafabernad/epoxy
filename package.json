@@ -1,8 +1,8 @@
 {
-  "name": "polobx",
+  "name": "epoxy",
   "version": "0.2.0",
-  "description": "A state manager for polymer based in mobx",
-  "main": "dist/polobx.js",
+  "description": "A state manager for polymer 2 based in mobx",
+  "main": "dist/epoxy.js",
   "module": "src/index.js",
   "scripts": {
     "build": "gulp",

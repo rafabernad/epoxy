@@ -1,7 +1,7 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-	typeof define === 'function' && define.amd ? define('createPolobxBehavior', factory) :
-	(global.createPolobxBehavior = factory());
+	typeof define === 'function' && define.amd ? define('epoxy', factory) :
+	(global.epoxy = factory());
 }(this, (function () { 'use strict';
 
 var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
@@ -19,14 +19,23 @@ var mobx = createCommonjsModule(function (module, exports) {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var __extends = commonjsGlobal && commonjsGlobal.__extends || function (d, b) {
-    for (var p in b) {
-        if (b.hasOwnProperty(p)) d[p] = b[p];
-    }function __() {
-        this.constructor = d;
-    }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+var __extends = commonjsGlobal && commonjsGlobal.__extends || function () {
+    var extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function (d, b) {
+        d.__proto__ = b;
+    } || function (d, b) {
+        for (var p in b) {
+            if (b.hasOwnProperty(p)) d[p] = b[p];
+        }
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() {
+            this.constructor = d;
+        }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+}();
+Object.defineProperty(exports, "__esModule", { value: true });
 registerGlobals();
 exports.extras = {
     allowStateChanges: allowStateChanges,
@@ -40,6 +49,7 @@ exports.extras = {
     isComputingDerivation: isComputingDerivation,
     isSpyEnabled: isSpyEnabled,
     onReactionError: onReactionError,
+    reserveArrayBuffer: reserveArrayBuffer,
     resetGlobalState: resetGlobalState,
     shareGlobalState: shareGlobalState,
     spyReport: spyReport,
@@ -50,6 +60,7 @@ exports.extras = {
 if ((typeof __MOBX_DEVTOOLS_GLOBAL_HOOK__ === "undefined" ? "undefined" : _typeof(__MOBX_DEVTOOLS_GLOBAL_HOOK__)) === "object") {
     __MOBX_DEVTOOLS_GLOBAL_HOOK__.injectMobx(module.exports);
 }
+module.exports.default = module.exports;
 var actionFieldDecorator = createClassPropertyDecorator(function (target, key, value, args, originalDescriptor) {
     var actionName = args && args.length === 1 ? args[0] : value.name || key || "<unnamed action>";
     var wrappedAction = action(actionName, value);
@@ -219,7 +230,7 @@ function reaction(expression, effect, arg3) {
     var isScheduled = false;
     var nextValue;
     var r = new Reaction(opts.name, function () {
-        if (opts.delay < 1) {
+        if (firstTime || opts.delay < 1) {
             reactionRunner();
         } else if (!isScheduled) {
             isScheduled = true;
@@ -309,7 +320,8 @@ function createTransformer(transformer, onCleanup) {
 }
 exports.createTransformer = createTransformer;
 function getMemoizationId(object) {
-    if (object === null || (typeof object === "undefined" ? "undefined" : _typeof(object)) !== "object") throw new Error("[mobx] transform expected some kind of object, got: " + object);
+    if (typeof object === 'string' || typeof object === 'number') return object;
+    if (object === null || (typeof object === "undefined" ? "undefined" : _typeof(object)) !== "object") throw new Error("[mobx] transform expected some kind of object or primitive value, got: " + object);
     var tid = object.$transformId;
     if (tid === undefined) {
         tid = getNextId();
@@ -793,7 +805,6 @@ var ComputedValue = function () {
         propagateMaybeChanged(this);
     };
     ComputedValue.prototype.onBecomeUnobserved = function () {
-        invariant(this.dependenciesState !== IDerivationState.NOT_TRACKING, getMessage("m029"));
         clearObserving(this);
         this.value = undefined;
     };
@@ -979,6 +990,7 @@ function trackDerivedFunction(derivation, f, context) {
 function bindDependencies(derivation) {
     var prevObserving = derivation.observing;
     var observing = derivation.observing = derivation.newObserving;
+    var lowestNewObservingDerivationState = IDerivationState.UP_TO_DATE;
     derivation.newObserving = null;
     var i0 = 0,
         l = derivation.unboundDepsCount;
@@ -988,6 +1000,9 @@ function bindDependencies(derivation) {
             dep.diffValue = 1;
             if (i0 !== i) observing[i0] = dep;
             i0++;
+        }
+        if (dep.dependenciesState > lowestNewObservingDerivationState) {
+            lowestNewObservingDerivationState = dep.dependenciesState;
         }
     }
     observing.length = i0;
@@ -1006,14 +1021,18 @@ function bindDependencies(derivation) {
             addObserver(dep, derivation);
         }
     }
+    if (lowestNewObservingDerivationState !== IDerivationState.UP_TO_DATE) {
+        derivation.dependenciesState = lowestNewObservingDerivationState;
+        derivation.onBecomeStale();
+    }
 }
 function clearObserving(derivation) {
     var obs = derivation.observing;
+    derivation.observing = [];
     var i = obs.length;
     while (i--) {
         removeObserver(obs[i], derivation);
     }derivation.dependenciesState = IDerivationState.NOT_TRACKING;
-    obs.length = 0;
 }
 function untracked(action) {
     var prev = untrackedStart();
@@ -1084,20 +1103,6 @@ function hasObservers(observable) {
 function getObservers(observable) {
     return observable.observers;
 }
-function invariantObservers(observable) {
-    var list = observable.observers;
-    var map = observable.observersIndexes;
-    var l = list.length;
-    for (var i = 0; i < l; i++) {
-        var id = list[i].__mapid;
-        if (i) {
-            invariant(map[id] === i, "INTERNAL ERROR maps derivation.__mapid to index in list");
-        } else {
-            invariant(!(id in map), "INTERNAL ERROR observer on index 0 shouldnt be held in map.");
-        }
-    }
-    invariant(list.length === 0 || Object.keys(map).length === list.length - 1, "INTERNAL ERROR there is no junk in map");
-}
 function addObserver(observable, node) {
     var l = observable.observers.length;
     if (l) {
@@ -1159,13 +1164,6 @@ function reportObserved(observable) {
     } else if (observable.observers.length === 0) {
         queueForUnobservation(observable);
     }
-}
-function invariantLOS(observable, msg) {
-    var min = getObservers(observable).reduce(function (a, b) {
-        return Math.min(a, b.dependenciesState);
-    }, 2);
-    if (min >= observable.lowestObserverState) return;
-    throw new Error("lowestObserverState is wrong for " + msg + " because " + min + " < " + observable.lowestObserverState);
 }
 function propagateChanged(observable) {
     if (observable.lowestObserverState === IDerivationState.STALE) return;
@@ -1480,7 +1478,7 @@ function deepEnhancer(v, _, name) {
     if (isObservable(v)) return v;
     if (Array.isArray(v)) return observable.array(v, name);
     if (isPlainObject(v)) return observable.object(v, name);
-    if (isES6Map(v)) return observable.shallowMap(v, name);
+    if (isES6Map(v)) return observable.map(v, name);
     return v;
 }
 function shallowEnhancer(v, _, name) {
@@ -1512,6 +1510,7 @@ function refStructEnhancer(v, oldValue, name) {
     if (deepEqual(v, oldValue)) return oldValue;
     return v;
 }
+var MAX_SPLICE_SIZE = 10000;
 var safariPrototypeSetterInheritanceBug = function () {
     var v = false;
     var p = {};
@@ -1566,7 +1565,12 @@ var ObservableArrayAdministration = function () {
     ObservableArrayAdministration.prototype.setArrayLength = function (newLength) {
         if (typeof newLength !== "number" || newLength < 0) throw new Error("[mobx.array] Out of range: " + newLength);
         var currentLength = this.values.length;
-        if (newLength === currentLength) return;else if (newLength > currentLength) this.spliceWithArray(currentLength, 0, new Array(newLength - currentLength));else this.spliceWithArray(newLength, currentLength - newLength);
+        if (newLength === currentLength) return;else if (newLength > currentLength) {
+            var newItems = new Array(newLength - currentLength);
+            for (var i = 0; i < newLength - currentLength; i++) {
+                newItems[i] = undefined;
+            }this.spliceWithArray(currentLength, 0, newItems);
+        } else this.spliceWithArray(newLength, currentLength - newLength);
     };
     ObservableArrayAdministration.prototype.updateArrayLength = function (oldLength, delta) {
         if (oldLength !== this.lastKnownLength) throw new Error("[mobx] Modification exception: the internal structure of an observable array was changed. Did you use peek() to change it?");
@@ -1597,9 +1601,18 @@ var ObservableArrayAdministration = function () {
         });
         var lengthDelta = newItems.length - deleteCount;
         this.updateArrayLength(length, lengthDelta);
-        var res = (_a = this.values).splice.apply(_a, [index, deleteCount].concat(newItems));
+        var res = this.spliceItemsIntoValues(index, deleteCount, newItems);
         if (deleteCount !== 0 || newItems.length !== 0) this.notifyArraySplice(index, newItems, res);
         return res;
+    };
+    ObservableArrayAdministration.prototype.spliceItemsIntoValues = function (index, deleteCount, newItems) {
+        if (newItems.length < MAX_SPLICE_SIZE) {
+            return (_a = this.values).splice.apply(_a, [index, deleteCount].concat(newItems));
+        } else {
+            var res = this.values.slice(index, index + deleteCount);
+            this.values = this.values.slice(0, index).concat(newItems, this.values.slice(index + deleteCount));
+            return res;
+        }
         var _a;
     };
     ObservableArrayAdministration.prototype.notifyArrayChildUpdate = function (index, newValue, oldValue) {
@@ -1718,6 +1731,9 @@ var ObservableArray = function (_super) {
         }
         return this.$mobx.spliceWithArray(index, deleteCount, newItems);
     };
+    ObservableArray.prototype.spliceWithArray = function (index, deleteCount, newItems) {
+        return this.$mobx.spliceWithArray(index, deleteCount, newItems);
+    };
     ObservableArray.prototype.push = function () {
         var items = [];
         for (var _i = 0; _i < arguments.length; _i++) {
@@ -1792,12 +1808,50 @@ var ObservableArray = function (_super) {
         this.$mobx.atom.reportObserved();
         return Array.prototype.toLocaleString.apply(this.$mobx.values, arguments);
     };
+    ObservableArray.prototype.get = function (index) {
+        var impl = this.$mobx;
+        if (impl) {
+            if (index < impl.values.length) {
+                impl.atom.reportObserved();
+                return impl.values[index];
+            }
+            console.warn("[mobx.array] Attempt to read an array index (" + index + ") that is out of bounds (" + impl.values.length + "). Please check length first. Out of bound indices will not be tracked by MobX");
+        }
+        return undefined;
+    };
+    ObservableArray.prototype.set = function (index, newValue) {
+        var adm = this.$mobx;
+        var values = adm.values;
+        if (index < values.length) {
+            checkIfStateModificationsAreAllowed(adm.atom);
+            var oldValue = values[index];
+            if (hasInterceptors(adm)) {
+                var change = interceptChange(adm, {
+                    type: "update",
+                    object: this,
+                    index: index, newValue: newValue
+                });
+                if (!change) return;
+                newValue = change.newValue;
+            }
+            newValue = adm.enhancer(newValue, oldValue);
+            var changed = newValue !== oldValue;
+            if (changed) {
+                values[index] = newValue;
+                adm.notifyArrayChildUpdate(index, newValue, oldValue);
+            }
+        } else if (index === values.length) {
+            adm.spliceWithArray(index, 0, [newValue]);
+        } else {
+            throw new Error("[mobx.array] Index out of bounds, " + index + " is larger than " + values.length);
+        }
+    };
     return ObservableArray;
 }(StubArray);
 declareIterator(ObservableArray.prototype, function () {
     return arrayAsIterator(this.slice());
 });
-makeNonEnumerable(ObservableArray.prototype, ["constructor", "intercept", "observe", "clear", "concat", "replace", "toJS", "toJSON", "peek", "find", "splice", "push", "pop", "shift", "unshift", "reverse", "sort", "remove", "move", "toString", "toLocaleString"]);
+makeNonEnumerable(ObservableArray.prototype, ["constructor", "intercept", "observe", "clear", "concat", "get", "replace", "toJS", "toJSON", "peek", "find", "splice", "spliceWithArray", "push", "pop", "set", "shift", "unshift", "reverse", "sort", "remove", "move", "toString", "toLocaleString"]);
 Object.defineProperty(ObservableArray.prototype, "length", {
     enumerable: false,
     configurable: true,
@@ -1816,60 +1870,21 @@ Object.defineProperty(ObservableArray.prototype, "length", {
         return baseFunc.apply(this.$mobx.values, arguments);
     });
 });
-var ENTRY_0 = {
-    configurable: true,
-    enumerable: false,
-    set: createArraySetter(0),
-    get: createArrayGetter(0)
-};
-function createArrayBufferItem(index) {
-    var set = createArraySetter(index);
-    var get = createArrayGetter(index);
-    Object.defineProperty(ObservableArray.prototype, "" + index, {
+var ENTRY_0 = createArrayEntryDescriptor(0);
+function createArrayEntryDescriptor(index) {
+    return {
         enumerable: false,
-        configurable: true,
-        set: set, get: get
-    });
-}
-function createArraySetter(index) {
-    return function (newValue) {
-        var adm = this.$mobx;
-        var values = adm.values;
-        if (index < values.length) {
-            checkIfStateModificationsAreAllowed(adm.atom);
-            var oldValue = values[index];
-            if (hasInterceptors(adm)) {
-                var change = interceptChange(adm, {
-                    type: "update",
-                    object: adm.array,
-                    index: index, newValue: newValue
-                });
-                if (!change) return;
-                newValue = change.newValue;
-            }
-            newValue = adm.enhancer(newValue, oldValue);
-            var changed = newValue !== oldValue;
-            if (changed) {
-                values[index] = newValue;
-                adm.notifyArrayChildUpdate(index, newValue, oldValue);
-            }
-        } else if (index === values.length) {
-            adm.spliceWithArray(index, 0, [newValue]);
-        } else throw new Error("[mobx.array] Index out of bounds, " + index + " is larger than " + values.length);
-    };
-}
-function createArrayGetter(index) {
-    return function () {
-        var impl = this.$mobx;
-        if (impl) {
-            if (index < impl.values.length) {
-                impl.atom.reportObserved();
-                return impl.values[index];
-            }
-            console.warn("[mobx.array] Attempt to read an array index (" + index + ") that is out of bounds (" + impl.values.length + "). Please check length first. Out of bound indices will not be tracked by MobX");
+        configurable: false,
+        get: function get() {
+            return this.get(index);
+        },
+        set: function set(value) {
+            this.set(index, value);
         }
-        return undefined;
     };
+}
+function createArrayBufferItem(index) {
+    Object.defineProperty(ObservableArray.prototype, "" + index, createArrayEntryDescriptor(index));
 }
 function reserveArrayBuffer(max) {
     for (var index = OBSERVABLE_ARRAY_BUFFER_SIZE; index < max; index++) {
@@ -1894,8 +1909,8 @@ var ObservableMap = function () {
         this.enhancer = enhancer;
         this.name = name;
         this.$mobx = ObservableMapMarker;
-        this._data = {};
-        this._hasMap = {};
+        this._data = Object.create(null);
+        this._hasMap = Object.create(null);
         this._keys = new ObservableArray(undefined, referenceEnhancer, this.name + ".keys()", true);
         this.interceptors = null;
         this.changeListeners = null;
@@ -2202,9 +2217,7 @@ function defineComputedPropertyFromComputedValue(adm, propName, computedValue) {
 var observablePropertyConfigs = {};
 var computedPropertyConfigs = {};
 function generateObservablePropConfig(propName) {
-    var config = observablePropertyConfigs[propName];
-    if (config) return config;
-    return observablePropertyConfigs[propName] = {
+    return observablePropertyConfigs[propName] || (observablePropertyConfigs[propName] = {
         configurable: true,
         enumerable: true,
         get: function get() {
@@ -2213,12 +2226,10 @@ function generateObservablePropConfig(propName) {
         set: function set(v) {
             setPropertyValue(this, propName, v);
         }
-    };
+    });
 }
 function generateComputedPropConfig(propName) {
-    var config = computedPropertyConfigs[propName];
-    if (config) return config;
-    return computedPropertyConfigs[propName] = {
+    return computedPropertyConfigs[propName] || (computedPropertyConfigs[propName] = {
         configurable: true,
         enumerable: false,
         get: function get() {
@@ -2227,7 +2238,7 @@ function generateComputedPropConfig(propName) {
         set: function set(v) {
             return this.$mobx.values[propName].set(v);
         }
-    };
+    });
 }
 function setPropertyValue(instance, name, newValue) {
     var adm = instance.$mobx;
@@ -2364,6 +2375,7 @@ var ObservableValue = function (_super) {
 }(BaseAtom);
 ObservableValue.prototype[primitiveSymbol()] = ObservableValue.prototype.valueOf;
 var isObservableValue = createInstanceofPredicate("ObservableValue", ObservableValue);
+exports.isBoxedObservable = isObservableValue;
 function getAtom(thing, property) {
     if ((typeof thing === "undefined" ? "undefined" : _typeof(thing)) === "object" && thing !== null) {
         if (isObservableArray(thing)) {
@@ -2410,6 +2422,9 @@ function getDebugName(thing, property) {
 }
 function createClassPropertyDecorator(onInitialize, _get, _set, enumerable, allowCustomArguments) {
     function classPropertyDecorator(target, key, descriptor, customArgs, argLen) {
+        if (argLen === void 0) {
+            argLen = 0;
+        }
         invariant(allowCustomArguments || quacksLikeADecorator(arguments), "This function is a decorator, but it wasn't invoked like a decorator");
         if (!descriptor) {
             var newDescriptor = {
@@ -2730,6 +2745,8 @@ var mobx_23 = mobx.useStrict;
 
 /*eslint no-console: ["error", { allow: ["warn", "error"] }] */
 
+var appState = {};
+
 /**
  * Create a mobx actions object
  * @param  {Object} actions Raw actions functions
@@ -2756,13 +2773,19 @@ function getStore(state, storeName) {
   return fullStore;
 }
 
+function applyMiddlwares(appState, middlewares, actionObject) {
+  middlewares.forEach(function (middleware) {
+    middleware(appState, actionObject);
+  });
+}
+
 /**
  * Iterates through a polymer element properties to find statePath atribute
  * subscribing it to state mutations
  * @param {Object} appState
  * @param {Object} element
  */
-function addStatePathBinding(appState, element) {
+function addStatePathBinding(element) {
   var properties = element.properties;
   // TODO: Remove side effects
   return Object.keys(properties).reduce(function (disposers, property) {
@@ -2771,7 +2794,7 @@ function addStatePathBinding(appState, element) {
     // If property has statePath field with a proper store
     // -> subscribe to state mutations
 
-    if (statePath && element._appState.hasOwnProperty(statePath.store)) {
+    if (statePath && appState.hasOwnProperty(statePath.store)) {
       var disposer = mobx_5(function () {
         var appStateValue = deepPathCheck(appState, statePath.store, statePath.path);
 
@@ -2787,10 +2810,9 @@ function addStatePathBinding(appState, element) {
 
 /**
  * Adds state observers specified in a component
- * @param {Object} appState
  * @param {Object} element
  */
-function addStateObservers(appState, element) {
+function addStateObservers(element) {
   var stateObservers = element.stateObservers;
 
   return stateObservers.reduce(function (disposers, _ref) {
@@ -2821,7 +2843,7 @@ function addStateObservers(appState, element) {
  * @param  {Object} stores
  * @return {Object}       app state
  */
-function appStateReducer(stores) {
+function combineStores(stores) {
   var _this = this;
 
   return Object.keys(stores).reduce(function (state, key) {
@@ -2830,30 +2852,37 @@ function appStateReducer(stores) {
     var model = mobx_18(stores[key].model);
     var actions = actionsReducer(stores[key].actions);
 
-    state[key] = {
-      getStore: getStore.bind(_this, state),
-      extendObservable: mobx_12,
-      action: mobx_2,
-      model: model,
-      actions: actions
-    };
+    if (!state[key]) {
+
+      state[key] = {
+        getStore: getStore.bind(_this, state),
+        extendObservable: mobx_12,
+        action: mobx_2,
+        model: model,
+        actions: actions
+      };
+    }
 
     return state;
-  }, {});
+  }, appState);
 }
 
 /**
  * Dispach an action to a defined store
- * @param  {Object} appState
  * @param  {string} store   Store name
  * @param  {string} action  Action name
  * @param  {any} payload Payload data. Optional
  * @return {Object}         Store object
  */
-function dispatch(appState, _ref2) {
-  var store = _ref2.store,
-      actionName = _ref2.action,
-      payload = _ref2.payload;
+function dispatch(middlewares, actionObject) {
+  var store = actionObject.store,
+      actionName = actionObject.action,
+      payload = actionObject.payload;
+
+
+  if (middlewares) {
+    applyMiddlwares.apply(this, arguments);
+  }
 
   if (appState[store] && appState[store].actions && appState[store].actions[actionName]) {
     var storeAction = appState[store].actions[actionName];
@@ -2866,12 +2895,11 @@ function dispatch(appState, _ref2) {
 
 /**
  * Get a deep property value from a store
- * @param  {Object} appState
  * @param  {string} storeName
  * @param  {string} path  Example: path.subpath.subsubpath
  * @return {any}
  */
-function deepPathCheck(appState, storeName, path) {
+function deepPathCheck(storeName, path) {
   var pathArray = path.split('.');
   var model = appState[storeName].model;
 
@@ -2885,36 +2913,37 @@ function deepPathCheck(appState, storeName, path) {
   }, model);
 }
 
-var index = function (stores) {
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
 
-  // Create app state with the provided stores
-  var appState = appStateReducer(stores);
+var createBehavior = function (stores, middlewares) {
+  var _obj;
 
-  // Enable strict mode
-  // it allows store changes only throught actions
-  mobx_23(true);
+  // Combine the provided stores with the app state
+  combineStores(stores);
 
-  return {
+  return _obj = {
     created: function created() {
-      this._appState = appState;
-      this._disposers = [];
-      this.dispatch = dispatch.bind(this, appState);
+      this._disposers = !this._disposers && [];
+      this.dispatch = dispatch.bind(this, middlewares);
+      _get(_obj.__proto__ || Object.getPrototypeOf(_obj), 'created', this).apply(this, arguments);
     },
     attached: function attached() {
       if (this.properties) {
-        var stateBindingsDisposers = addStatePathBinding(appState, this);
+        var stateBindingsDisposers = addStatePathBinding(this);
         this._disposers = this._disposers.concat(stateBindingsDisposers);
       }
 
       if (this.stateObservers) {
-        var stateObserversDisposers = addStateObservers(appState, this);
+        var stateObserversDisposers = addStateObservers(this);
         this._disposers = this._disposers.concat(stateObserversDisposers);
       }
+      _get(_obj.__proto__ || Object.getPrototypeOf(_obj), 'attached', this).apply(this, arguments);
     },
     detached: function detached() {
       this._disposers.forEach(function (disposer) {
         return disposer();
       });
+      _get(_obj.__proto__ || Object.getPrototypeOf(_obj), 'detached', this).apply(this, arguments);
     },
 
 
@@ -2925,13 +2954,99 @@ var index = function (stores) {
      * @return {any}  field/property value
      */
     getStateProperty: function getStateProperty(store, path) {
-      var stateProperty = deepPathCheck(appState, store, path);
+      var stateProperty = deepPathCheck(store, path);
 
       return mobx_20(stateProperty);
     }
   };
 };
 
-return index;
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _get$1 = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var createMixin = function (stores, middlewares) {
+
+  // Combine the provided stores with the app state
+  combineStores(stores);
+
+  return function (superclass) {
+    return function (_superclass) {
+      _inherits(_class, _superclass);
+
+      function _class() {
+        _classCallCheck(this, _class);
+
+        return _possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).apply(this, arguments));
+      }
+
+      _createClass(_class, [{
+        key: 'created',
+        value: function created() {
+          this._disposers = !this._disposers && [];
+          this.dispatch = dispatch.bind(this, middlewares);
+          _get$1(_class.prototype.__proto__ || Object.getPrototypeOf(_class.prototype), 'created', this).apply(this, arguments);
+        }
+      }, {
+        key: 'attached',
+        value: function attached() {
+          if (this.properties) {
+            var stateBindingsDisposers = addStatePathBinding(this);
+            this._disposers = this._disposers.concat(stateBindingsDisposers);
+          }
+
+          if (this.stateObservers) {
+            var stateObserversDisposers = addStateObservers(this);
+            this._disposers = this._disposers.concat(stateObserversDisposers);
+          }
+          _get$1(_class.prototype.__proto__ || Object.getPrototypeOf(_class.prototype), 'attached', this).apply(this, arguments);
+        }
+      }, {
+        key: 'detached',
+        value: function detached() {
+          this._disposers.forEach(function (disposer) {
+            return disposer();
+          });
+          _get$1(_class.prototype.__proto__ || Object.getPrototypeOf(_class.prototype), 'detached', this).apply(this, arguments);
+        }
+
+        /**
+         * Gets a field/property of the selected store
+         * @param  {string} store
+         * @param  {string} path
+         * @return {any}  field/property value
+         */
+
+      }, {
+        key: 'getStateProperty',
+        value: function getStateProperty(store, path) {
+          var stateProperty = deepPathCheck(store, path);
+
+          return mobx_20(stateProperty);
+        }
+      }]);
+
+      return _class;
+    }(superclass);
+  };
+};
+
+var epoxy = {
+  useStrict: mobx_23,
+  createBehavior: createBehavior,
+  createMixin: createMixin
+};
+
+// Enable strict mode by default
+// it allows store changes only throught actions
+epoxy.useStrict(true);
+
+return epoxy;
 
 })));

@@ -32,9 +32,9 @@ gulp.task('default', () =>
               sourceMap: true
             })
           ],
-          moduleName: 'createPolobxBehavior'
+          moduleName: 'epoxy'
         }, 'umd'))
-        .pipe(rename('polobx.js'))
+        .pipe(rename('epoxy.js'))
         .pipe(gulp.dest('dist'))
 );
 

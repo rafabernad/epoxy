@@ -1,6 +1,8 @@
 /*eslint no-console: ["error", { allow: ["warn", "error"] }] */
 
-import { autorun, observable, extendObservable, action, toJS } from 'mobx';
+import { useStrict, autorun, observable, extendObservable, action, toJS } from 'mobx';
+
+const appState = {};
 
 /**
  * Create a mobx actions object
@@ -37,7 +39,7 @@ function applyMiddlwares(appState, middlewares, actionObject) {
  * @param {Object} appState
  * @param {Object} element
  */
-export function addStatePathBinding(appState, element) {
+export function addStatePathBinding(element) {
   const properties = element.properties;
   // TODO: Remove side effects
   return Object.keys(properties).reduce( (disposers, property) => {
@@ -45,7 +47,7 @@ export function addStatePathBinding(appState, element) {
 
     // If property has statePath field with a proper store
     // -> subscribe to state mutations
-    if (statePath && element._appState.hasOwnProperty(statePath.store)) {
+    if (statePath && appState.hasOwnProperty(statePath.store)) {
       const disposer = autorun(() => {
         const appStateValue = deepPathCheck(appState, statePath.store, statePath.path);
 
@@ -61,10 +63,9 @@ export function addStatePathBinding(appState, element) {
 
 /**
  * Adds state observers specified in a component
- * @param {Object} appState
  * @param {Object} element
  */
-export function addStateObservers(appState, element) {
+export function addStateObservers(element) {
   const stateObservers = element.stateObservers;
 
   return stateObservers.reduce((disposers, {store: storeName, observer, path}) => {
@@ -92,34 +93,37 @@ export function addStateObservers(appState, element) {
  * @param  {Object} stores
  * @return {Object}       app state
  */
-export function appStateReducer(stores) {
+export function combineStores(stores) {
   return Object.keys(stores).reduce( (state, key) => {
     // mobx.observable() applies itself recursively by default,
     // so all fields inside the model are observable
     const model = observable(stores[key].model);
     const actions = actionsReducer(stores[key].actions);
+    
+    if(!state[key]) {
 
-    state[key] = {
-      getStore: getStore.bind(this, state),
-      extendObservable,
-      action,
-      model,
-      actions
-    };
+      state[key] = {
+        getStore: getStore.bind(this, state),
+        extendObservable,
+        action,
+        model,
+        actions
+      };
+
+    }
 
     return state;
-  }, {});
+  }, appState);
 }
 
 /**
  * Dispach an action to a defined store
- * @param  {Object} appState
  * @param  {string} store   Store name
  * @param  {string} action  Action name
  * @param  {any} payload Payload data. Optional
  * @return {Object}         Store object
  */
-export function dispatch(appState, middlewares, actionObject) {
+export function dispatch(middlewares, actionObject) {
   const {store, action: actionName, payload} = actionObject;
 
   if (middlewares) {
@@ -137,12 +141,11 @@ export function dispatch(appState, middlewares, actionObject) {
 
 /**
  * Get a deep property value from a store
- * @param  {Object} appState
  * @param  {string} storeName
  * @param  {string} path  Example: path.subpath.subsubpath
  * @return {any}
  */
-export function deepPathCheck(appState, storeName, path) {
+export function deepPathCheck(storeName, path) {
   const pathArray = path.split('.');
   const { [storeName]: { model } } = appState;
 
