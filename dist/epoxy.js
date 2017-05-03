@@ -1,8 +1,8 @@
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-	typeof define === 'function' && define.amd ? define('epoxy', factory) :
-	(global.epoxy = factory());
-}(this, (function () { 'use strict';
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+	typeof define === 'function' && define.amd ? define('epoxy', ['exports'], factory) :
+	(factory((global.epoxy = global.epoxy || {})));
+}(this, (function (exports) { 'use strict';
 
 var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -2741,7 +2741,6 @@ var mobx_5 = mobx.autorun;
 var mobx_12 = mobx.extendObservable;
 var mobx_18 = mobx.observable;
 var mobx_20 = mobx.toJS;
-var mobx_23 = mobx.useStrict;
 
 /*eslint no-console: ["error", { allow: ["warn", "error"] }] */
 
@@ -2773,7 +2772,7 @@ function getStore(state, storeName) {
   return fullStore;
 }
 
-function applyMiddlwares(appState, middlewares, actionObject) {
+function applyMiddlewares(appState, middlewares, actionObject) {
   middlewares.forEach(function (middleware) {
     middleware(appState, actionObject);
   });
@@ -2786,7 +2785,7 @@ function applyMiddlwares(appState, middlewares, actionObject) {
  * @param {Object} element
  */
 function addStatePathBinding(element) {
-  var properties = element.properties;
+  var properties = element.constructor.properties;
   // TODO: Remove side effects
   return Object.keys(properties).reduce(function (disposers, property) {
     var statePath = properties[property].statePath;
@@ -2796,7 +2795,7 @@ function addStatePathBinding(element) {
 
     if (statePath && appState.hasOwnProperty(statePath.store)) {
       var disposer = mobx_5(function () {
-        var appStateValue = deepPathCheck(appState, statePath.store, statePath.path);
+        var appStateValue = deepPathCheck(statePath.store, statePath.path);
 
         // Update property with mutated state value
         element.set(property, mobx_20(appStateValue));
@@ -2824,7 +2823,7 @@ function addStateObservers(element) {
 
     if (path) {
       disposer = mobx_5(function () {
-        var appStateValue = deepPathCheck(appState, storeName, path);
+        var appStateValue = deepPathCheck(storeName, path);
 
         observer.call(element, appStateValue);
       });
@@ -2876,12 +2875,12 @@ function combineStores(stores) {
  */
 function dispatch(middlewares, actionObject) {
   var store = actionObject.store,
-      actionName = actionObject.action,
+      action$$1 = actionObject.action,
       payload = actionObject.payload;
 
 
   if (middlewares) {
-    applyMiddlwares.apply(this, arguments);
+    applyMiddlewares.apply(this, arguments);
   }
 
   if (appState[store] && appState[store].actions && appState[store].actions[actionName]) {
@@ -2890,7 +2889,7 @@ function dispatch(middlewares, actionObject) {
     return storeAction.apply(appState[store], [payload]);
   }
 
-  console.warn('No action "' + mobx_2 + '" for "' + store + '" store');
+  console.warn('No action "' + action$$1 + '" for "' + store + '" store');
 }
 
 /**
@@ -2913,140 +2912,12 @@ function deepPathCheck(storeName, path) {
   }, model);
 }
 
-var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+exports.addStatePathBinding = addStatePathBinding;
+exports.addStateObservers = addStateObservers;
+exports.combineStores = combineStores;
+exports.dispatch = dispatch;
+exports.deepPathCheck = deepPathCheck;
 
-var createBehavior = function (stores, middlewares) {
-  var _obj;
-
-  // Combine the provided stores with the app state
-  combineStores(stores);
-
-  return _obj = {
-    created: function created() {
-      this._disposers = !this._disposers && [];
-      this.dispatch = dispatch.bind(this, middlewares);
-      _get(_obj.__proto__ || Object.getPrototypeOf(_obj), 'created', this).apply(this, arguments);
-    },
-    attached: function attached() {
-      if (this.properties) {
-        var stateBindingsDisposers = addStatePathBinding(this);
-        this._disposers = this._disposers.concat(stateBindingsDisposers);
-      }
-
-      if (this.stateObservers) {
-        var stateObserversDisposers = addStateObservers(this);
-        this._disposers = this._disposers.concat(stateObserversDisposers);
-      }
-      _get(_obj.__proto__ || Object.getPrototypeOf(_obj), 'attached', this).apply(this, arguments);
-    },
-    detached: function detached() {
-      this._disposers.forEach(function (disposer) {
-        return disposer();
-      });
-      _get(_obj.__proto__ || Object.getPrototypeOf(_obj), 'detached', this).apply(this, arguments);
-    },
-
-
-    /**
-     * Gets a field/property of the selected store
-     * @param  {string} store
-     * @param  {string} path
-     * @return {any}  field/property value
-     */
-    getStateProperty: function getStateProperty(store, path) {
-      var stateProperty = deepPathCheck(store, path);
-
-      return mobx_20(stateProperty);
-    }
-  };
-};
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _get$1 = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var createMixin = function (stores, middlewares) {
-
-  // Combine the provided stores with the app state
-  combineStores(stores);
-
-  return function (superclass) {
-    return function (_superclass) {
-      _inherits(_class, _superclass);
-
-      function _class() {
-        _classCallCheck(this, _class);
-
-        return _possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).apply(this, arguments));
-      }
-
-      _createClass(_class, [{
-        key: 'created',
-        value: function created() {
-          this._disposers = !this._disposers && [];
-          this.dispatch = dispatch.bind(this, middlewares);
-          _get$1(_class.prototype.__proto__ || Object.getPrototypeOf(_class.prototype), 'created', this).apply(this, arguments);
-        }
-      }, {
-        key: 'attached',
-        value: function attached() {
-          if (this.properties) {
-            var stateBindingsDisposers = addStatePathBinding(this);
-            this._disposers = this._disposers.concat(stateBindingsDisposers);
-          }
-
-          if (this.stateObservers) {
-            var stateObserversDisposers = addStateObservers(this);
-            this._disposers = this._disposers.concat(stateObserversDisposers);
-          }
-          _get$1(_class.prototype.__proto__ || Object.getPrototypeOf(_class.prototype), 'attached', this).apply(this, arguments);
-        }
-      }, {
-        key: 'detached',
-        value: function detached() {
-          this._disposers.forEach(function (disposer) {
-            return disposer();
-          });
-          _get$1(_class.prototype.__proto__ || Object.getPrototypeOf(_class.prototype), 'detached', this).apply(this, arguments);
-        }
-
-        /**
-         * Gets a field/property of the selected store
-         * @param  {string} store
-         * @param  {string} path
-         * @return {any}  field/property value
-         */
-
-      }, {
-        key: 'getStateProperty',
-        value: function getStateProperty(store, path) {
-          var stateProperty = deepPathCheck(store, path);
-
-          return mobx_20(stateProperty);
-        }
-      }]);
-
-      return _class;
-    }(superclass);
-  };
-};
-
-var epoxy = {
-  useStrict: mobx_23,
-  createBehavior: createBehavior,
-  createMixin: createMixin
-};
-
-// Enable strict mode by default
-// it allows store changes only throught actions
-epoxy.useStrict(true);
-
-return epoxy;
+Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
