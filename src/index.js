@@ -105,7 +105,7 @@ export function combineStores(stores) {
       state[key] = {
         getStore: getStore.bind(this, state),
         extendObservable,
-        action,
+        //action,
         model,
         actions
       };
@@ -130,8 +130,8 @@ export function dispatch(middlewares, actionObject) {
     applyMiddlewares.apply(this, arguments);
   }
 
-  if (appState[store] && appState[store].actions && appState[store].actions[actionName]) {
-    const storeAction = appState[store].actions[actionName];
+  if (appState[store] && appState[store].actions && appState[store].actions[action]) {
+    const storeAction = appState[store].actions[action];
 
     return storeAction.apply(appState[store], [payload]);
   }
