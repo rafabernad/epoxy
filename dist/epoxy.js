@@ -2856,7 +2856,7 @@ function combineStores(stores) {
       state[key] = {
         getStore: getStore.bind(_this, state),
         extendObservable: mobx_12,
-        action: mobx_2,
+        //action,
         model: model,
         actions: actions
       };
@@ -2883,8 +2883,8 @@ function dispatch(middlewares, actionObject) {
     applyMiddlewares.apply(this, arguments);
   }
 
-  if (appState[store] && appState[store].actions && appState[store].actions[actionName]) {
-    var storeAction = appState[store].actions[actionName];
+  if (appState[store] && appState[store].actions && appState[store].actions[action$$1]) {
+    var storeAction = appState[store].actions[action$$1];
 
     return storeAction.apply(appState[store], [payload]);
   }
