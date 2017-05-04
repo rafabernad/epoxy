@@ -1,7 +1,7 @@
 {
   "name": "epoxy",
   "version": "0.2.0",
-  "description": "A state manager for polymer 2 based in mobx",
+  "description": "A state manager for polymer 1 & 2 based in mobx",
   "main": "dist/epoxy.js",
   "module": "src/index.js",
   "scripts": {
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ivanrod/polobx.git"
+    "url": "https://github.com/rafabernad/epoxy.git"
   },
   "keywords": [
     "polymer",
@@ -27,9 +27,13 @@
     "state",
     "mobx"
   ],
-  "author": "Iván Rodríguez <frivanrodriguez@gmail.com>",
+  "authors": [
+    "Rafa Bernad <rafa.bernad@outlook.com>",
+    "Ivan Rodríguez <frivanrodriguez@gmail.com>"
+  ],
   "license": "MIT",
   "devDependencies": {
+    "babel-plugin-external-helpers": "^6.22.0",
     "babel-preset-es2015": "^6.22.0",
     "eslint": "^3.15.0",
     "gh-pages": "^0.12.0",
@@ -41,12 +45,13 @@
     "gulp-git": "^2.0.0",
     "gulp-rename": "^1.2.2",
     "rollup-plugin-babel": "^2.7.1",
-    "rollup-plugin-commonjs": "^7.0.0",
-    "rollup-plugin-node-resolve": "^2.0.0",
+    "rollup-plugin-commonjs": "^8.0.2",
+    "rollup-plugin-html": "^0.2.1",
+    "rollup-plugin-node-resolve": "^3.0.0",
     "run-sequence": "^1.2.2",
-    "web-component-tester": "~4.2.2",
+    "web-component-tester": "^5.0.1",
     "web-component-tester-istanbul": "https://github.com/t2ym/web-component-tester-istanbul/tarball/0.10.1",
-    "yargs": "^6.6.0"
+    "yargs": "^8.0.1"
   },
   "dependencies": {
     "mobx": "^3.1.0"
