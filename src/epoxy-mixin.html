@@ -1,9 +1,7 @@
-<dom-module id="epoxy-mixin">
+<dom-module id="epoxy-behavior">
 	<script src="./epoxy.js"></script>
 	<script>
-	epoxy.createMixin = function(stores, middlewares) {
-	  // Combine the provided stores with the app state
-	  combineStores(stores);
+	epoxy.createMixin = function(middlewares) {
 
 	  return (base) => class extends base {
 	  	constructor() {
@@ -40,11 +38,14 @@
 	     * @return {any}  field/property value
 	     */
 	    getStateProperty(store, path) {
-	      const stateProperty = deepPathCheck(store, path);
+	      const stateProperty = epoxy.deepPathCheck(store, path);
 
 	      return toJS(stateProperty);
 	    }
-	  }
+	  };
+
 	}
+
+	epoxy.mixin = epoxy.createMixin();
 	</script>
 </dom-module>
