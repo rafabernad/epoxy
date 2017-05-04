@@ -1,51 +1,51 @@
-<dom-module id="epoxy-mixin">
-	<script src="./epoxy.js"></script>
-	<script>
-	epoxy.createMixin = function(middlewares) {
+<script src="./epoxy.js"></script>
+<script>
 
-	  return (base) => class extends base {
-	  	constructor() {
-	  		super();
-	  		this._disposers = !this._disposers && [];
-	  	}
-	    ready() {
-	      this.dispatch = epoxy.dispatch.bind(this, middlewares);
-	      super.ready.apply(this, arguments);
-	    }
+  epoxy.createMixin = function(middlewares) {
 
-	    connectedCallback() {
-	      if (this.constructor.properties) {
-	        const stateBindingsDisposers = epoxy.addStatePathBinding(this);
-	        this._disposers = this._disposers.concat(stateBindingsDisposers);
-	      }
+    return (base) => class extends base {
+      constructor() {
+          super();
+          this._disposers = !this._disposers && [];
+      }
+      ready() {
+        this.dispatch = epoxy.dispatch.bind(this, middlewares);
+        super.ready.apply(this, arguments);
+      }
 
-	      if (this.constructor.stateObservers) {
-	        const stateObserversDisposers = epoxy.addStateObservers(this);
-	        this._disposers = this._disposers.concat(stateObserversDisposers);
-	      }
-	      super.connectedCallback.apply(this, arguments);
-	    }
+      connectedCallback() {
+        if (this.constructor.properties) {
+          const stateBindingsDisposers = epoxy.addStatePathBinding(this);
+          this._disposers = this._disposers.concat(stateBindingsDisposers);
+        }
 
-	    disconnectedCallback() {
-	      this._disposers.forEach(disposer => disposer());
-	      super.disconnectedCallback.apply(this, arguments);
-	    }
+        if (this.constructor.stateObservers) {
+          const stateObserversDisposers = epoxy.addStateObservers(this);
+          this._disposers = this._disposers.concat(stateObserversDisposers);
+        }
+        super.connectedCallback.apply(this, arguments);
+      }
 
-	    /**
-	     * Gets a field/property of the selected store
-	     * @param  {string} store
-	     * @param  {string} path
-	     * @return {any}  field/property value
-	     */
-	    getStateProperty(store, path) {
-	      const stateProperty = epoxy.deepPathCheck(store, path);
+      disconnectedCallback() {
+        this._disposers.forEach(disposer => disposer());
+        super.disconnectedCallback.apply(this, arguments);
+      }
 
-	      return toJS(stateProperty);
-	    }
-	  };
+      /**
+       * Gets a field/property of the selected store
+       * @param  {string} store
+       * @param  {string} path
+       * @return {any}  field/property value
+       */
+      getStateProperty(store, path) {
+        const stateProperty = epoxy.deepPathCheck(store, path);
 
-	}
+        return toJS(stateProperty);
+      }
+    };
 
-	epoxy.mixin = epoxy.createMixin();
-	</script>
-</dom-module>
+  }
+
+epoxy.mixin = epoxy.createMixin();
+
+</script>

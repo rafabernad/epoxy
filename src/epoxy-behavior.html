@@ -1,49 +1,49 @@
-<dom-module id="epoxy-behavior">
-  <script src="./epoxy.js"></script>
-  <script>
-    epoxy.createBehavior = function(middlewares) {
+<script src="./epoxy.js"></script>
+<script>
 
-      return {
+  epoxy.createBehavior = function(middlewares) {
 
-        created() {
-          this._disposers = !this._disposers && [];
-          this.dispatch = epoxy.dispatch.bind(this, middlewares);
-          super.created.apply(this, arguments);
-        },
+    return {
 
-        attached() {
-          if (this.properties) {
-            const stateBindingsDisposers = epoxy.addStatePathBinding(this);
-            this._disposers = this._disposers.concat(stateBindingsDisposers);
-          }
+      created() {
+        this._disposers = !this._disposers && [];
+        this.dispatch = epoxy.dispatch.bind(this, middlewares);
+        super.created.apply(this, arguments);
+      },
 
-          if (this.stateObservers) {
-            const stateObserversDisposers = epoxy.addStateObservers(this);
-            this._disposers = this._disposers.concat(stateObserversDisposers);
-          }
-          super.attached.apply(this, arguments);
-        },
-
-        detached() {
-          this._disposers.forEach(disposer => disposer());
-          super.detached.apply(this, arguments);
-        },
-
-        /**
-         * Gets a field/property of the selected store
-         * @param  {string} store
-         * @param  {string} path
-         * @return {any}  field/property value
-         */
-        getStateProperty(store, path) {
-          const stateProperty = epoxy.deepPathCheck(store, path);
-
-          return epoxy.toJS(stateProperty);
+      attached() {
+        if (this.properties) {
+          const stateBindingsDisposers = epoxy.addStatePathBinding(this);
+          this._disposers = this._disposers.concat(stateBindingsDisposers);
         }
-      };
 
-    }
+        if (this.stateObservers) {
+          const stateObserversDisposers = epoxy.addStateObservers(this);
+          this._disposers = this._disposers.concat(stateObserversDisposers);
+        }
+        super.attached.apply(this, arguments);
+      },
 
-    epoxy.behavior = epoxy.createBehavior();
-  </script>
-</dom-module>
+      detached() {
+        this._disposers.forEach(disposer => disposer());
+        super.detached.apply(this, arguments);
+      },
+
+      /**
+       * Gets a field/property of the selected store
+       * @param  {string} store
+       * @param  {string} path
+       * @return {any}  field/property value
+       */
+      getStateProperty(store, path) {
+        const stateProperty = epoxy.deepPathCheck(store, path);
+
+        return epoxy.toJS(stateProperty);
+      }
+    };
+
+  }
+
+  epoxy.behavior = epoxy.createBehavior();
+
+</script>
