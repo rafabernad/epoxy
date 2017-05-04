@@ -1,4 +1,4 @@
-<dom-module id="epoxy-mixin">
+<dom-module id="epoxy-behavior">
   <script src="./epoxy.js"></script>
   <script>
     epoxy.createBehavior = function(middlewares) {
@@ -41,7 +41,7 @@
           return epoxy.toJS(stateProperty);
         }
       };
-      
+
     }
 
     epoxy.behavior = epoxy.createBehavior();
