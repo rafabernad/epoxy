@@ -2,7 +2,6 @@ const gulp = require('gulp');
 const rollup = require('gulp-better-rollup');
 const babel = require('rollup-plugin-babel');
 const nodeResolve = require('rollup-plugin-node-resolve');
-const html = require('rollup-plugin-html');
 const commonjs = require('rollup-plugin-commonjs');
 const rename = require("gulp-rename");
 const bump = require("gulp-bump");
@@ -17,11 +16,10 @@ const getPackageJson = function () {
   return JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 };
 
-gulp.task('default', () =>
-    gulp.src(['src/epoxy.js', 'src/*.html'])
+gulp.task('build', () =>
+    gulp.src('src/epoxy.js')
         .pipe(rollup({
           plugins: [
-            html(),
             babel(),
             nodeResolve({
               jsnext: true,
@@ -37,7 +35,19 @@ gulp.task('default', () =>
           moduleName: 'epoxy'
         }, 'umd'))
         .pipe(gulp.dest('dist'))
+
 );
+
+gulp.task('copy-html-imports', () => {
+   gulp.src('src/*.html')
+   .pipe(gulp.dest('dist'));
+});
+
+gulp.task('default', callback => {
+  runSequence(
+    ['build', 'copy-html-imports'],
+    callback);
+});
 
 gulp.task('commit-release', () => {
   const { version } = getPackageJson();

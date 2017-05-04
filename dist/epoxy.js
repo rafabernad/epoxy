@@ -2772,7 +2772,7 @@ function getStore(state, storeName) {
   return fullStore;
 }
 
-function applyMiddlewares(appState, middlewares, actionObject) {
+function applyMiddlewares(middlewares, actionObject) {
   middlewares.forEach(function (middleware) {
     middleware(appState, actionObject);
   });
@@ -2912,6 +2912,7 @@ function deepPathCheck(storeName, path) {
   }, model);
 }
 
+exports.toJS = mobx_20;
 exports.addStatePathBinding = addStatePathBinding;
 exports.addStateObservers = addStateObservers;
 exports.combineStores = combineStores;
