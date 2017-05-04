@@ -2,6 +2,7 @@ const gulp = require('gulp');
 const rollup = require('gulp-better-rollup');
 const babel = require('rollup-plugin-babel');
 const nodeResolve = require('rollup-plugin-node-resolve');
+const html = require('rollup-plugin-html');
 const commonjs = require('rollup-plugin-commonjs');
 const rename = require("gulp-rename");
 const bump = require("gulp-bump");
@@ -17,9 +18,10 @@ const getPackageJson = function () {
 };
 
 gulp.task('default', () =>
-    gulp.src('src/epoxy.js')
+    gulp.src(['src/epoxy.js', 'src/*.html'])
         .pipe(rollup({
           plugins: [
+            html(),
             babel(),
             nodeResolve({
               jsnext: true,
@@ -34,7 +36,6 @@ gulp.task('default', () =>
           ],
           moduleName: 'epoxy'
         }, 'umd'))
-        .pipe(rename('epoxy.js'))
         .pipe(gulp.dest('dist'))
 );
 
