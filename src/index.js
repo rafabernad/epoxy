@@ -2,6 +2,8 @@
 
 import { autorun, observable, extendObservable, action, toJS } from 'mobx';
 
+export { toJS };
+
 const appState = {};
 
 /**
@@ -27,7 +29,7 @@ function getStore(state, storeName) {
   return fullStore;
 }
 
-function applyMiddlewares(appState, middlewares, actionObject) {
+function applyMiddlewares(middlewares, actionObject) {
   middlewares.forEach(middleware => {
     middleware(appState, actionObject);
   });
