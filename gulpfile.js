@@ -17,7 +17,7 @@ const getPackageJson = function () {
 };
 
 gulp.task('default', () =>
-    gulp.src('src/index.js')
+    gulp.src('src/epoxy.js')
         .pipe(rollup({
           plugins: [
             babel(),
