@@ -1,3 +1,4 @@
+![dependencies](https://david-dm.org/rafabernad/epoxy.svg)
 ![travis CI](https://travis-ci.org/ivanrod/polobx.svg?branch=master "Travis Build")
 [![Published on webcomponents.org](https://img.shields.io/badge/webcomponents.org-published-blue.svg)](https://www.webcomponents.org/element/ivanrod/polobx)
 
