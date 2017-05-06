@@ -32,7 +32,7 @@ gulp.task('build', () =>
               sourceMap: true
             })
           ],
-          moduleName: 'epoxy'
+          moduleName: 'Epoxy'
         }, 'umd'))
         .pipe(gulp.dest('dist'))
 

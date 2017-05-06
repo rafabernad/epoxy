@@ -1,7 +1,7 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-	typeof define === 'function' && define.amd ? define('epoxy', ['exports'], factory) :
-	(factory((global.epoxy = global.epoxy || {})));
+	typeof define === 'function' && define.amd ? define('Epoxy', ['exports'], factory) :
+	(factory((global.Epoxy = global.Epoxy || {})));
 }(this, (function (exports) { 'use strict';
 
 var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
@@ -2742,6 +2742,8 @@ var mobx_12 = mobx.extendObservable;
 var mobx_18 = mobx.observable;
 var mobx_20 = mobx.toJS;
 
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
 /*eslint no-console: ["error", { allow: ["warn", "error"] }] */
 
 var appState = {};
@@ -2781,6 +2783,8 @@ function applyMiddlewares(middlewares, actionObject) {
 /**
  * Iterates through a polymer element properties to find statePath atribute
  * subscribing it to state mutations
+ *
+ * @memberof Epoxy
  * @param {Object} appState
  * @param {Object} element
  */
@@ -2809,6 +2813,8 @@ function addStatePathBinding(element) {
 
 /**
  * Adds state observers specified in a component
+ *
+ * @memberof Epoxy
  * @param {Object} element
  */
 function addStateObservers(element) {
@@ -2839,6 +2845,8 @@ function addStateObservers(element) {
 
 /**
  * Create an app state with the provided stores
+ *
+ * @memberof Epoxy
  * @param  {Object} stores
  * @return {Object}       app state
  */
@@ -2853,13 +2861,12 @@ function combineStores(stores) {
 
     if (!state[key]) {
 
-      state[key] = {
+      state[key] = _extends({}, actions, {
         getStore: getStore.bind(_this, state),
         extendObservable: mobx_12,
         //action,
-        model: model,
-        actions: actions
-      };
+        model: model
+      });
     }
 
     return state;
@@ -2868,6 +2875,8 @@ function combineStores(stores) {
 
 /**
  * Dispach an action to a defined store
+ *
+ * @memberof Epoxy
  * @param  {string} store   Store name
  * @param  {string} action  Action name
  * @param  {any} payload Payload data. Optional
@@ -2894,6 +2903,8 @@ function dispatch(middlewares, actionObject) {
 
 /**
  * Get a deep property value from a store
+ *
+ * @memberof Epoxy
  * @param  {string} storeName
  * @param  {string} path  Example: path.subpath.subsubpath
  * @return {any}

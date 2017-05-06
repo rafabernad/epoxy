@@ -38,6 +38,8 @@ function applyMiddlewares(middlewares, actionObject) {
 /**
  * Iterates through a polymer element properties to find statePath atribute
  * subscribing it to state mutations
+ *
+ * @memberof Epoxy
  * @param {Object} appState
  * @param {Object} element
  */
@@ -65,6 +67,8 @@ export function addStatePathBinding(element) {
 
 /**
  * Adds state observers specified in a component
+ *
+ * @memberof Epoxy
  * @param {Object} element
  */
 export function addStateObservers(element) {
@@ -92,6 +96,8 @@ export function addStateObservers(element) {
 
 /**
  * Create an app state with the provided stores
+ *
+ * @memberof Epoxy
  * @param  {Object} stores
  * @return {Object}       app state
  */
@@ -105,11 +111,11 @@ export function combineStores(stores) {
     if(!state[key]) {
 
       state[key] = {
+        ...actions,
         getStore: getStore.bind(this, state),
         extendObservable,
         //action,
-        model,
-        actions
+        model
       };
 
     }
@@ -120,6 +126,8 @@ export function combineStores(stores) {
 
 /**
  * Dispach an action to a defined store
+ *
+ * @memberof Epoxy
  * @param  {string} store   Store name
  * @param  {string} action  Action name
  * @param  {any} payload Payload data. Optional
@@ -143,6 +151,8 @@ export function dispatch(middlewares, actionObject) {
 
 /**
  * Get a deep property value from a store
+ *
+ * @memberof Epoxy
  * @param  {string} storeName
  * @param  {string} path  Example: path.subpath.subsubpath
  * @return {any}

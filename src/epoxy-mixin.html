@@ -1,7 +1,19 @@
-<script src="./epoxy.js"></script>
+<script src="./Epoxy.js"></script>
 <script>
 
-  epoxy.createMixin = function(middlewares) {
+  /**
+   * Factory for extending classes with middlewares.
+   *
+   * This method creates a new Polymer Element class factory with
+   * overloaded lifecycle callbacks that provide bindings to MobX stores.
+   *
+   * @memberof Epoxy
+   * @param {function[]} Array of middleware functions to execture when calling 
+   *   extended class' dispatch method.
+   * @return {function} A class factory for extending classes with the provided
+   *   middlewares.
+   */
+  Epoxy.createMixin = function(middlewares) {
 
     return (base) => class extends base {
       constructor() {
@@ -9,18 +21,18 @@
           this._disposers = !this._disposers && [];
       }
       ready() {
-        this.dispatch = epoxy.dispatch.bind(this, middlewares);
+        this.dispatch = Epoxy.dispatch.bind(this, middlewares);
         super.ready.apply(this, arguments);
       }
 
       connectedCallback() {
         if (this.constructor.properties) {
-          const stateBindingsDisposers = epoxy.addStatePathBinding(this);
+          const stateBindingsDisposers = Epoxy.addStatePathBinding(this);
           this._disposers = this._disposers.concat(stateBindingsDisposers);
         }
 
         if (this.constructor.stateObservers) {
-          const stateObserversDisposers = epoxy.addStateObservers(this);
+          const stateObserversDisposers = Epoxy.addStateObservers(this);
           this._disposers = this._disposers.concat(stateObserversDisposers);
         }
         super.connectedCallback.apply(this, arguments);
@@ -38,7 +50,7 @@
        * @return {any}  field/property value
        */
       getStateProperty(store, path) {
-        const stateProperty = epoxy.deepPathCheck(store, path);
+        const stateProperty = Epoxy.deepPathCheck(store, path);
 
         return toJS(stateProperty);
       }
@@ -46,6 +58,16 @@
 
   }
 
-epoxy.mixin = epoxy.createMixin();
+  /**
+   * Class factory for extending classes without middlewares.
+   *
+   * This method creates a new Polymer Element class declaration with
+   * overloaded lifecycle callbacks that provide bindings to MobX stores.
+   *
+   * @memberof Epoxy
+   * @param {class} The Polymer element to extend with MobX bindings.
+   * @return {class} An extension of the original class overloaded lifecycle callbacks.
+   */
+  Epoxy.Mixin = Epoxy.createMixin();
 
 </script>

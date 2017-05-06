@@ -1,24 +1,24 @@
-<script src="./epoxy.js"></script>
+<script src="./Epoxy.js"></script>
 <script>
 
-  epoxy.createBehavior = function(middlewares) {
+  Epoxy.createBehavior = function(middlewares) {
 
     return {
 
       created() {
         this._disposers = !this._disposers && [];
-        this.dispatch = epoxy.dispatch.bind(this, middlewares);
+        this.dispatch = Epoxy.dispatch.bind(this, middlewares);
         super.created.apply(this, arguments);
       },
 
       attached() {
         if (this.properties) {
-          const stateBindingsDisposers = epoxy.addStatePathBinding(this);
+          const stateBindingsDisposers = Epoxy.addStatePathBinding(this);
           this._disposers = this._disposers.concat(stateBindingsDisposers);
         }
 
         if (this.stateObservers) {
-          const stateObserversDisposers = epoxy.addStateObservers(this);
+          const stateObserversDisposers = Epoxy.addStateObservers(this);
           this._disposers = this._disposers.concat(stateObserversDisposers);
         }
         super.attached.apply(this, arguments);
@@ -36,14 +36,14 @@
        * @return {any}  field/property value
        */
       getStateProperty(store, path) {
-        const stateProperty = epoxy.deepPathCheck(store, path);
+        const stateProperty = Epoxy.deepPathCheck(store, path);
 
-        return epoxy.toJS(stateProperty);
+        return Epoxy.toJS(stateProperty);
       }
     };
 
   }
 
-  epoxy.behavior = epoxy.createBehavior();
+  Epoxy.Behavior = Epoxy.createBehavior();
 
 </script>
