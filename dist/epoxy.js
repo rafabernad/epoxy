@@ -2742,8 +2742,6 @@ var mobx_12 = mobx.extendObservable;
 var mobx_18 = mobx.observable;
 var mobx_20 = mobx.toJS;
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
 /*eslint no-console: ["error", { allow: ["warn", "error"] }] */
 
 var appState = {};
@@ -2761,23 +2759,24 @@ function actionsReducer(actions) {
   }, {});
 }
 
-function getStore(state, storeName) {
-  var _state$storeName = state[storeName],
-      model = _state$storeName.model,
-      actions = _state$storeName.actions;
-
-  var fullStore = {
-    model: mobx_20(model), // toJS to prevent changes in other stores?
-    actions: actions // Remove?
-  };
-
-  return fullStore;
-}
-
 function applyMiddlewares(middlewares, actionObject) {
   middlewares.forEach(function (middleware) {
     middleware(appState, actionObject);
   });
+}
+
+/**
+ * Iterates through a polymer element properties to find statePath atribute
+ * subscribing it to state mutations
+ *
+ * @memberof Epoxy
+ * @param {Object} appState
+ * @param {Object} element
+ */
+function getStore(storeName) {
+  var model = appState[storeName];
+
+  return mobx_20(model);
 }
 
 /**
@@ -2844,29 +2843,24 @@ function addStateObservers(element) {
 }
 
 /**
- * Create an app state with the provided stores
+ * Create an app store with the provided state and actions
  *
  * @memberof Epoxy
  * @param  {Object} stores
  * @return {Object}       app state
  */
-function combineStores(stores) {
-  var _this = this;
+function createStore(reducers, models) {
 
-  return Object.keys(stores).reduce(function (state, key) {
+  return Object.keys(models).reduce(function (state, key) {
     // mobx.observable() applies itself recursively by default,
     // so all fields inside the model are observable
-    var model = mobx_18(stores[key].model);
-    var actions = actionsReducer(stores[key].actions);
+    var model = mobx_18(models[key]);
+    var actions = actionsReducer(reducers);
+
+    mobx_12(model, actions);
 
     if (!state[key]) {
-
-      state[key] = _extends({}, actions, {
-        getStore: getStore.bind(_this, state),
-        extendObservable: mobx_12,
-        //action,
-        model: model
-      });
+      state[key] = model;
     }
 
     return state;
@@ -2892,8 +2886,8 @@ function dispatch(middlewares, actionObject) {
     applyMiddlewares.apply(this, arguments);
   }
 
-  if (appState[store] && appState[store].actions && appState[store].actions[action$$1]) {
-    var storeAction = appState[store].actions[action$$1];
+  if (appState[store] && appState[store][action$$1]) {
+    var storeAction = appState[store][action$$1];
 
     return storeAction.apply(appState[store], [payload]);
   }
@@ -2911,8 +2905,6 @@ function dispatch(middlewares, actionObject) {
  */
 function deepPathCheck(storeName, path) {
   var pathArray = path.split('.');
-  var model = appState[storeName].model;
-
 
   return pathArray.reduce(function (prev, next) {
     var hasNextPath = prev && prev.hasOwnProperty && prev.hasOwnProperty(next);
@@ -2920,13 +2912,14 @@ function deepPathCheck(storeName, path) {
     if (hasNextPath) {
       return prev[next];
     }
-  }, model);
+  }, appState[storeName]);
 }
 
 exports.toJS = mobx_20;
+exports.getStore = getStore;
 exports.addStatePathBinding = addStatePathBinding;
 exports.addStateObservers = addStateObservers;
-exports.combineStores = combineStores;
+exports.createStore = createStore;
 exports.dispatch = dispatch;
 exports.deepPathCheck = deepPathCheck;
 

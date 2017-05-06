@@ -19,20 +19,24 @@ function actionsReducer(actions) {
   }, {});
 }
 
-function getStore(state, storeName) {
-  const { model, actions } = state[storeName];
-  const fullStore = {
-    model: toJS(model), // toJS to prevent changes in other stores?
-    actions // Remove?
-  };
-
-  return fullStore;
-}
-
 function applyMiddlewares(middlewares, actionObject) {
   middlewares.forEach(middleware => {
     middleware(appState, actionObject);
   });
+}
+
+/**
+ * Iterates through a polymer element properties to find statePath atribute
+ * subscribing it to state mutations
+ *
+ * @memberof Epoxy
+ * @param {Object} appState
+ * @param {Object} element
+ */
+export function getStore(storeName) {
+  const model = appState[storeName];
+
+  return toJS(model);
 }
 
 /**
@@ -95,29 +99,24 @@ export function addStateObservers(element) {
 }
 
 /**
- * Create an app state with the provided stores
+ * Create an app store with the provided state and actions
  *
  * @memberof Epoxy
  * @param  {Object} stores
  * @return {Object}       app state
  */
-export function combineStores(stores) {
-  return Object.keys(stores).reduce( (state, key) => {
+export function createStore(reducers, models) {
+
+  return Object.keys(models).reduce( (state, key) => {
     // mobx.observable() applies itself recursively by default,
     // so all fields inside the model are observable
-    const model = observable(stores[key].model);
-    const actions = actionsReducer(stores[key].actions);
-    
+    const model = observable(models[key]);
+    const actions = actionsReducer(reducers);
+
+    extendObservable(model, actions);
+
     if(!state[key]) {
-
-      state[key] = {
-        ...actions,
-        getStore: getStore.bind(this, state),
-        extendObservable,
-        //action,
-        model
-      };
-
+      state[key] = model;
     }
 
     return state;
@@ -140,8 +139,8 @@ export function dispatch(middlewares, actionObject) {
     applyMiddlewares.apply(this, arguments);
   }
 
-  if (appState[store] && appState[store].actions && appState[store].actions[action]) {
-    const storeAction = appState[store].actions[action];
+  if (appState[store] && appState[store][action]) {
+    const storeAction = appState[store][action];
 
     return storeAction.apply(appState[store], [payload]);
   }
@@ -159,7 +158,6 @@ export function dispatch(middlewares, actionObject) {
  */
 export function deepPathCheck(storeName, path) {
   const pathArray = path.split('.');
-  const { [storeName]: { model } } = appState;
 
   return pathArray.reduce((prev, next) => {
     const hasNextPath = prev && prev.hasOwnProperty && prev.hasOwnProperty(next);
@@ -167,5 +165,5 @@ export function deepPathCheck(storeName, path) {
     if (hasNextPath) {
       return prev[next];
     }
-  }, model);
+  }, appState[storeName]);
 }
