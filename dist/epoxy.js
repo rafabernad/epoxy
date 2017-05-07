@@ -14,7 +14,7 @@ function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
 
-var mobx = createCommonjsModule(function (module, exports) {
+var mobx$1 = createCommonjsModule(function (module, exports) {
 "use strict";
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
@@ -2736,15 +2736,34 @@ function toPrimitive(value) {
 }
 });
 
-var mobx_2 = mobx.action;
-var mobx_5 = mobx.autorun;
-var mobx_12 = mobx.extendObservable;
-var mobx_18 = mobx.observable;
-var mobx_20 = mobx.toJS;
+var mobx_2 = mobx$1.action;
+var mobx_5 = mobx$1.autorun;
+var mobx_12 = mobx$1.extendObservable;
+var mobx_18 = mobx$1.observable;
+var mobx_20 = mobx$1.toJS;
+var mobx_23 = mobx$1.useStrict;
+var mobx_24 = mobx$1.isStrictModeEnabled;
 
 /*eslint no-console: ["error", { allow: ["warn", "error"] }] */
 
+// Force strict mode (for now)
+mobx_23(true);
+
 var appState = {};
+
+function addHiddenFinalProp(object, propName, value) {
+  Object.defineProperty(object, propName, {
+    enumerable: false,
+    writable: false,
+    configurable: true,
+    value: value
+  });
+}
+
+function decorateState(state) {
+  addHiddenFinalProp(state, 'getStore', getStore);
+  addHiddenFinalProp(state, 'extendObservable', mobx_12);
+}
 
 /**
  * Create a mobx actions object
@@ -2801,7 +2820,12 @@ function addStatePathBinding(element) {
         var appStateValue = deepPathCheck(statePath.store, statePath.path);
 
         // Update property with mutated state value
-        element.set(property, mobx_20(appStateValue));
+        if (mobx_24()) {
+          element['_set' + (property[0].toUpperCase() + property.slice(1))](mobx_20(appStateValue));
+        } else {
+          // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
+          element.set([property, mobx_20(appStateValue)]);
+        }
       });
 
       disposers.push(disposer);
@@ -2849,7 +2873,7 @@ function addStateObservers(element) {
  * @param  {Object} stores
  * @return {Object}       app state
  */
-function createStore(reducers, models) {
+function combineStores(models, reducers) {
 
   return Object.keys(models).reduce(function (state, key) {
     // mobx.observable() applies itself recursively by default,
@@ -2861,14 +2885,8 @@ function createStore(reducers, models) {
 
     if (!state[key]) {
       state[key] = model;
+      decorateState(state[key]);
     }
-
-    Object.defineProperty(state[key], 'getStore', {
-      enumerable: false,
-      writable: false,
-      configurable: true,
-      value: getStore
-    });
 
     return state;
   }, appState);
@@ -2923,10 +2941,12 @@ function deepPathCheck(storeName, path) {
 }
 
 exports.toJS = mobx_20;
+exports.useStrict = mobx_23;
+exports.isStrictModeEnabled = mobx_24;
 exports.getStore = getStore;
 exports.addStatePathBinding = addStatePathBinding;
 exports.addStateObservers = addStateObservers;
-exports.createStore = createStore;
+exports.combineStores = combineStores;
 exports.dispatch = dispatch;
 exports.deepPathCheck = deepPathCheck;
 
