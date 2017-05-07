@@ -1,10 +1,27 @@
 /*eslint no-console: ["error", { allow: ["warn", "error"] }] */
 
-import { autorun, observable, extendObservable, action, toJS } from 'mobx';
+import { useStrict, isStrictModeEnabled, autorun, observable, extendObservable, action, toJS } from 'mobx';
 
-export { toJS };
+export { toJS, useStrict, isStrictModeEnabled };
+
+// Force strict mode (for now)
+useStrict(true);
 
 const appState = {};
+
+function addHiddenFinalProp(object, propName, value) {
+    Object.defineProperty(object, propName, {
+        enumerable: false,
+        writable: false,
+        configurable: true,
+        value: value
+    });
+}
+
+function decorateState(state) {
+    addHiddenFinalProp(state, 'getStore', getStore);
+    addHiddenFinalProp(state, 'extendObservable', extendObservable);
+}
 
 /**
  * Create a mobx actions object
@@ -60,7 +77,12 @@ export function addStatePathBinding(element) {
         const appStateValue = deepPathCheck(statePath.store, statePath.path);
 
         // Update property with mutated state value
-        element.set(property, toJS(appStateValue));
+        if(isStrictModeEnabled()) {
+          element[`_set${property[0].toUpperCase() + property.slice(1)}`](toJS(appStateValue))
+        } else {
+          // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
+          element.set([property, toJS(appStateValue)]);
+        }
       });
 
       disposers.push(disposer);
@@ -105,7 +127,7 @@ export function addStateObservers(element) {
  * @param  {Object} stores
  * @return {Object}       app state
  */
-export function createStore(reducers, models) {
+export function combineStores(models, reducers) {
 
   return Object.keys(models).reduce( (state, key) => {
     // mobx.observable() applies itself recursively by default,
@@ -117,15 +139,9 @@ export function createStore(reducers, models) {
 
     if(!state[key]) {
       state[key] = model;
+      decorateState(state[key]);
     }
-
-    Object.defineProperty(state[key], 'getStore', {
-        enumerable: false,
-        writable: false,
-        configurable: true,
-        value: getStore
-    });
-
+    
     return state;
   }, appState);
 }
