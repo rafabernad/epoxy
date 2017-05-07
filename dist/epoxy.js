@@ -2863,6 +2863,13 @@ function createStore(reducers, models) {
       state[key] = model;
     }
 
+    Object.defineProperty(state[key], 'getStore', {
+      enumerable: false,
+      writable: false,
+      configurable: true,
+      value: getStore
+    });
+
     return state;
   }, appState);
 }

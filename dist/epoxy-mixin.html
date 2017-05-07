@@ -49,7 +49,7 @@
        * @param  {string} path
        * @return {any}  field/property value
        */
-      getStateProperty(store, path) {
+      getStoreProperty(store, path) {
         const stateProperty = Epoxy.deepPathCheck(store, path);
 
         return toJS(stateProperty);
