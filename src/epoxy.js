@@ -77,7 +77,7 @@ export function addStatePathBinding(element) {
         const appStateValue = deepPathCheck(statePath.store, statePath.path);
 
         // Update property with mutated state value
-        if(isStrictModeEnabled()) {
+        if(properties[property].readOnly) {
           element[`_set${property[0].toUpperCase() + property.slice(1)}`](toJS(appStateValue))
         } else {
           // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
@@ -127,22 +127,34 @@ export function addStateObservers(element) {
  * @param  {Object} stores
  * @return {Object}       app state
  */
-export function combineStores(models, reducers) {
+export function combineStores(models, actions = {}) {
 
-  return Object.keys(models).reduce( (state, key) => {
+  return Object.keys(models).reduce( (appState, key) => {
+
+    const model = Object.getOwnPropertyNames(models[key]).reduce((cleanObj, cleanKey) => {
+      const property = Object.getOwnPropertyDescriptor(models[key], cleanKey);
+      if(!property.value || (property.value && typeof(property.value) !== 'function')) {
+        Object.defineProperty(cleanObj, cleanKey, property);
+      } else {
+        if(!actions[cleanKey]) {
+          Object.defineProperty(actions, cleanKey, property)
+        }
+      }
+      return cleanObj;
+    }, new Object());
     // mobx.observable() applies itself recursively by default,
     // so all fields inside the model are observable
-    const model = observable(models[key]);
-    const actions = actionsReducer(reducers);
+    const state = observable(model);
+    const reducers = actionsReducer(actions);
 
-    extendObservable(model, actions);
+    extendObservable(state, reducers);
+    decorateState(state);
 
-    if(!state[key]) {
-      state[key] = model;
-      decorateState(state[key]);
+    if(!appState[key]) {
+      appState[key] = state;
     }
     
-    return state;
+    return appState;
   }, appState);
 }
 

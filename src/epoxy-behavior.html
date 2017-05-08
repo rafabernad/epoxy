@@ -1,7 +1,7 @@
 <script src="./Epoxy.js"></script>
 <script>
 
-  Epoxy.createBehavior = function(middlewares) {
+  Epoxy.BehaviorFactory = function(middlewares) {
 
     return {
 
@@ -44,6 +44,6 @@
 
   }
 
-  Epoxy.Behavior = Epoxy.createBehavior();
+  Epoxy.Behavior = Epoxy.BehaviorFactory();
 
 </script>
