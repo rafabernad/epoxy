@@ -2820,7 +2820,7 @@ function addStatePathBinding(element) {
         var appStateValue = deepPathCheck(statePath.store, statePath.path);
 
         // Update property with mutated state value
-        if (mobx_24()) {
+        if (properties[property].readOnly) {
           element['_set' + (property[0].toUpperCase() + property.slice(1))](mobx_20(appStateValue));
         } else {
           // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
@@ -2873,22 +2873,36 @@ function addStateObservers(element) {
  * @param  {Object} stores
  * @return {Object}       app state
  */
-function combineStores(models, reducers) {
+function combineStores(models) {
+  var actions = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-  return Object.keys(models).reduce(function (state, key) {
+
+  return Object.keys(models).reduce(function (appState, key) {
+
+    var model = Object.getOwnPropertyNames(models[key]).reduce(function (cleanObj, cleanKey) {
+      var property = Object.getOwnPropertyDescriptor(models[key], cleanKey);
+      if (!property.value || property.value && typeof property.value !== 'function') {
+        Object.defineProperty(cleanObj, cleanKey, property);
+      } else {
+        if (!actions[cleanKey]) {
+          Object.defineProperty(actions, cleanKey, property);
+        }
+      }
+      return cleanObj;
+    }, new Object());
     // mobx.observable() applies itself recursively by default,
     // so all fields inside the model are observable
-    var model = mobx_18(models[key]);
-    var actions = actionsReducer(reducers);
+    var state = mobx_18(model);
+    var reducers = actionsReducer(actions);
 
-    mobx_12(model, actions);
+    mobx_12(state, reducers);
+    decorateState(state);
 
-    if (!state[key]) {
-      state[key] = model;
-      decorateState(state[key]);
+    if (!appState[key]) {
+      appState[key] = state;
     }
 
-    return state;
+    return appState;
   }, appState);
 }
 

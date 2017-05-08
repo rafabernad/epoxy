@@ -13,7 +13,7 @@
    * @return {function} A class factory for extending classes with the provided
    *   middlewares.
    */
-  Epoxy.createMixin = function(middlewares) {
+  Epoxy.MixinFactory = function(middlewares) {
 
     return (base) => class extends base {
       constructor() {
@@ -68,6 +68,6 @@
    * @param {class} The Polymer element to extend with MobX bindings.
    * @return {class} An extension of the original class overloaded lifecycle callbacks.
    */
-  Epoxy.Mixin = Epoxy.createMixin();
+  Epoxy.Mixin = Epoxy.MixinFactory();
 
 </script>
