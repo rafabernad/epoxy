@@ -2823,7 +2823,7 @@ function addStatePathBinding(element) {
         if (properties[property].readOnly) {
           element['_set' + (property[0].toUpperCase() + property.slice(1))](mobx_20(appStateValue));
         } else {
-          // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
+          // TODO Override default Polymer setter behavior on non strict scenarios for bidirectional updates
           element.set(property, mobx_20(appStateValue));
         }
       });
@@ -2901,8 +2901,8 @@ function combineStores(models) {
     if (!appState[key]) {
       appState[key] = state;
     }
-
-    return appState;
+    console.log(appState);
+    return appState[key];
   }, appState);
 }
 

@@ -42,6 +42,16 @@
         this._disposers.forEach(disposer => disposer());
         super.disconnectedCallback.apply(this, arguments);
       }
+      _setProperty(property, value) {
+        const epoxyProperty = this.constructor.properties[property].statePath;
+        const strictMode = Epoxy.isStrictModeEnabled();
+        
+        if(strictMode && this[property] == Epoxy.deepPathCheck(epoxyProperty.store, epoxyProperty.path)) {
+          console.warn(`Since strict-mode is enabled, changing observed observable values outside actions is not allowed. Please wrap the code in an 'action' if this change is intended. Tried to modify: ${property} from store ${epoxyProperty.store}`);
+        } else {
+          super._setProperty.apply(this, arguments);
+        }
+      }
 
       /**
        * Gets a field/property of the selected store
