@@ -2824,7 +2824,7 @@ function addStatePathBinding(element) {
           element['_set' + (property[0].toUpperCase() + property.slice(1))](mobx_20(appStateValue));
         } else {
           // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
-          element.set([property, mobx_20(appStateValue)]);
+          element.set(property, mobx_20(appStateValue));
         }
       });
 

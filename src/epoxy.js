@@ -81,7 +81,7 @@ export function addStatePathBinding(element) {
           element[`_set${property[0].toUpperCase() + property.slice(1)}`](toJS(appStateValue))
         } else {
           // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
-          element.set([property, toJS(appStateValue)]);
+          element.set(property, toJS(appStateValue));
         }
       });
 
