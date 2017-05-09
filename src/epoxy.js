@@ -10,17 +10,17 @@ useStrict(true);
 const appState = {};
 
 function addHiddenFinalProp(object, propName, value) {
-    Object.defineProperty(object, propName, {
-        enumerable: false,
-        writable: false,
-        configurable: true,
-        value: value
-    });
+  Object.defineProperty(object, propName, {
+    enumerable: false,
+    writable: false,
+    configurable: true,
+    value: value
+  });
 }
 
 function decorateState(state) {
-    addHiddenFinalProp(state, 'getStore', getStore);
-    addHiddenFinalProp(state, 'extendObservable', extendObservable);
+  addHiddenFinalProp(state, 'getStore', getStore);
+  addHiddenFinalProp(state, 'extendObservable', extendObservable);
 }
 
 /**
@@ -29,7 +29,7 @@ function decorateState(state) {
  * @return {Object}         Mobx actions
  */
 function actionsReducer(actions) {
-  return Object.keys(actions).reduce( (prevActions, actionName) => {
+  return Object.keys(actions).reduce((prevActions, actionName) => {
     prevActions[actionName] = action.bound(actions[actionName]);
 
     return prevActions;
@@ -67,8 +67,12 @@ export function getStore(storeName) {
 export function addStatePathBinding(element) {
   const properties = element.constructor.properties;
   // TODO: Remove side effects
-  return Object.keys(properties).reduce( (disposers, property) => {
-    const { [property]: { statePath } } = properties;
+  return Object.keys(properties).reduce((disposers, property) => {
+    const {
+      [property]: {
+        statePath
+      }
+    } = properties;
 
     // If property has statePath field with a proper store
     // -> subscribe to state mutations
@@ -77,10 +81,10 @@ export function addStatePathBinding(element) {
         const appStateValue = deepPathCheck(statePath.store, statePath.path);
 
         // Update property with mutated state value
-        if(properties[property].readOnly) {
+        if (properties[property].readOnly) {
           element[`_set${property[0].toUpperCase() + property.slice(1)}`](toJS(appStateValue))
         } else {
-          // TODO Override default Polymer setter for non strict scenarios for bidirectional updates
+          // TODO Override default Polymer setter behavior on non strict scenarios for bidirectional updates
           element.set(property, toJS(appStateValue));
         }
       });
@@ -100,7 +104,7 @@ export function addStatePathBinding(element) {
 export function addStateObservers(element) {
   const stateObservers = element.stateObservers;
 
-  return stateObservers.reduce((disposers, {store: storeName, observer, path}) => {
+  return stateObservers.reduce((disposers, { store: storeName, observer, path }) => {
     let disposer;
 
     if (path) {
@@ -129,14 +133,14 @@ export function addStateObservers(element) {
  */
 export function combineStores(models, actions = {}) {
 
-  return Object.keys(models).reduce( (appState, key) => {
+  return Object.keys(models).reduce((appState, key) => {
 
     const model = Object.getOwnPropertyNames(models[key]).reduce((cleanObj, cleanKey) => {
       const property = Object.getOwnPropertyDescriptor(models[key], cleanKey);
-      if(!property.value || (property.value && typeof(property.value) !== 'function')) {
+      if (!property.value || (property.value && typeof(property.value) !== 'function')) {
         Object.defineProperty(cleanObj, cleanKey, property);
       } else {
-        if(!actions[cleanKey]) {
+        if (!actions[cleanKey]) {
           Object.defineProperty(actions, cleanKey, property)
         }
       }
@@ -150,11 +154,11 @@ export function combineStores(models, actions = {}) {
     extendObservable(state, reducers);
     decorateState(state);
 
-    if(!appState[key]) {
+    if (!appState[key]) {
       appState[key] = state;
     }
-    
-    return appState;
+    console.log(appState);
+    return appState[key];
   }, appState);
 }
 
@@ -168,7 +172,7 @@ export function combineStores(models, actions = {}) {
  * @return {Object}         Store object
  */
 export function dispatch(middlewares, actionObject) {
-  const {store, action, payload} = actionObject;
+  const { store, action, payload } = actionObject;
 
   if (middlewares) {
     applyMiddlewares.apply(this, arguments);
