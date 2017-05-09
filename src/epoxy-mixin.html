@@ -42,36 +42,16 @@
         this._disposers.forEach(disposer => disposer());
         super.disconnectedCallback.apply(this, arguments);
       }
-      _createPropertyAccessor(property, readOnly) {
-
+      _setProperty(property, value) {
         const epoxyProperty = this.constructor.properties[property].statePath;
         const strictMode = Epoxy.isStrictModeEnabled();
         
-        if(!!epoxyProperty) {
-          if (!this.hasOwnProperty('__dataHasAccessor')) {
-            this.__dataHasAccessor = Object.assign({}, this.__dataHasAccessor);
-          }
-          if (!this.__dataHasAccessor[property]) {
-            this.__dataHasAccessor[property] = true;
-            Object.defineProperty(this, property, {
-              get: function() {
-                return this.__data[property];
-              },
-              set: strictMode || readOnly ? function(value) { 
-                if(Epoxy.isStrictModeEnabled()) {
-                  this._setProperty(property, this[property]);
-                  console.warn(`Since strict-mode is enabled, changing observed observable values outside actions is not allowed. Please wrap the code in an 'action' if this change is intended. Tried to modify: ${property} from store ${epoxyProperty.store}`);
-                }
-              } : function(value) {
-                this._setProperty(property, value);
-              }
-            });
-          }
+        if(strictMode && this[property] == Epoxy.deepPathCheck(epoxyProperty.store, epoxyProperty.path)) {
+          console.warn(`Since strict-mode is enabled, changing observed observable values outside actions is not allowed. Please wrap the code in an 'action' if this change is intended. Tried to modify: ${property} from store ${epoxyProperty.store}`);
         } else {
-          super._createPropertyAccessor.apply(this, arguments);
+          super._setProperty.apply(this, arguments);
         }
       }
-
 
       /**
        * Gets a field/property of the selected store
