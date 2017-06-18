@@ -7,7 +7,7 @@ export { toJS, useStrict, isStrictModeEnabled };
 // Force strict mode (for now)
 useStrict(true);
 
-const appState = {};
+const store = {};
 
 function addHiddenFinalProp(object, propName, value) {
   Object.defineProperty(object, propName, {
@@ -19,7 +19,7 @@ function addHiddenFinalProp(object, propName, value) {
 }
 
 function decorateState(state) {
-  addHiddenFinalProp(state, 'getStore', getStore);
+  addHiddenFinalProp(state, 'getState', getState);
   addHiddenFinalProp(state, 'extendObservable', extendObservable);
 }
 
@@ -38,7 +38,7 @@ function actionsReducer(actions) {
 
 function applyMiddlewares(middlewares, actionObject) {
   middlewares.forEach(middleware => {
-    middleware(appState, actionObject);
+    middleware(store, actionObject);
   });
 }
 
@@ -47,13 +47,25 @@ function applyMiddlewares(middlewares, actionObject) {
  * subscribing it to state mutations
  *
  * @memberof Epoxy
- * @param {Object} appState
+ * @param {Object} store
  * @param {Object} element
  */
-export function getStore(storeName) {
-  const model = appState[storeName];
+export function getState(stateName) {
+  const model = store[stateName];
 
   return toJS(model);
+}
+
+function applyValueToElement(element, property, value) {
+  const properties = element.constructor.properties;
+
+  // Update property with mutated state value
+  if (properties[property].readOnly) {
+    element[`_set${property[0].toUpperCase() + property.slice(1)}`](toJS(value));
+  } else {
+    // TODO Override default Polymer setter behavior on non strict scenarios for bidirectional updates
+    element.set(property, toJS(value));
+  }
 }
 
 /**
@@ -61,11 +73,13 @@ export function getStore(storeName) {
  * subscribing it to state mutations
  *
  * @memberof Epoxy
- * @param {Object} appState
+ * @param {Object} store
  * @param {Object} element
  */
 export function addStatePathBinding(element) {
+  
   const properties = element.constructor.properties;
+
   // TODO: Remove side effects
   return Object.keys(properties).reduce((disposers, property) => {
     const {
@@ -76,23 +90,37 @@ export function addStatePathBinding(element) {
 
     // If property has statePath field with a proper store
     // -> subscribe to state mutations
-    if (statePath && appState.hasOwnProperty(statePath.store)) {
+    if (statePath && store.hasOwnProperty(statePath.store)) {
       const disposer = autorun(() => {
-        const appStateValue = deepPathCheck(statePath.store, statePath.path);
-
-        // Update property with mutated state value
-        if (properties[property].readOnly) {
-          element[`_set${property[0].toUpperCase() + property.slice(1)}`](toJS(appStateValue))
-        } else {
-          // TODO Override default Polymer setter behavior on non strict scenarios for bidirectional updates
-          element.set(property, toJS(appStateValue));
-        }
+        const value = deepPathCheck(statePath.store, statePath.path);
+        applyValueToElement(element, property, value);
       });
 
       disposers.push(disposer);
     }
     return disposers;
   }, []);
+}
+
+/**
+ * Connects a Polymer component to a MobX store.
+ * It does not modify the component class passed to it; instead, it returns a new, connected component class for you to use.
+ *
+ * @memberof Epoxy
+ * @param {Function} mapStateToProps
+ * @param {Function} mapDispatchToProps
+ */
+export function addConnectedStateBinding(element, mapStateToProps) {
+
+  const disposer = autorun(() => {
+    const storeValues = mapStateToProps(store);
+    Object.keys(storeValues).map((property) => {
+      applyValueToElement(element, property, storeValues[property]);
+    });
+  });
+
+  return [disposer];
+  
 }
 
 /**
@@ -109,12 +137,12 @@ export function addStateObservers(element) {
 
     if (path) {
       disposer = autorun(() => {
-        const appStateValue = deepPathCheck(storeName, path);
+        const storeValue = deepPathCheck(storeName, path);
 
-        observer.call(element, appStateValue);
+        observer.call(element, storeValue);
       });
     } else {
-      disposer = autorun(observer.bind(element, appState[storeName].model));
+      disposer = autorun(observer.bind(element, store[storeName].model));
     }
 
     disposers.push(disposer);
@@ -133,7 +161,7 @@ export function addStateObservers(element) {
  */
 export function combineStores(models, actions = {}) {
 
-  return Object.keys(models).reduce((appState, key) => {
+  return Object.keys(models).reduce((store, key) => {
 
     const model = Object.getOwnPropertyNames(models[key]).reduce((cleanObj, cleanKey) => {
       const property = Object.getOwnPropertyDescriptor(models[key], cleanKey);
@@ -154,12 +182,12 @@ export function combineStores(models, actions = {}) {
     extendObservable(state, reducers);
     decorateState(state);
 
-    if (!appState[key]) {
-      appState[key] = state;
+    if (!store[key]) {
+      store[key] = state;
     }
-    console.log(appState);
-    return appState[key];
-  }, appState);
+    console.log(store);
+    return store[key];
+  }, store);
 }
 
 /**
@@ -178,10 +206,10 @@ export function dispatch(middlewares, actionObject) {
     applyMiddlewares.apply(this, arguments);
   }
 
-  if (appState[store] && appState[store][action]) {
-    const storeAction = appState[store][action];
+  if (store[store] && store[store][action]) {
+    const storeAction = store[store][action];
 
-    return storeAction.apply(appState[store], [payload]);
+    return storeAction.apply(store[store], [payload]);
   }
 
   console.warn(`No action "${action}" for "${store}" store`);
@@ -191,11 +219,11 @@ export function dispatch(middlewares, actionObject) {
  * Get a deep property value from a store
  *
  * @memberof Epoxy
- * @param  {string} storeName
+ * @param  {string} stateName
  * @param  {string} path  Example: path.subpath.subsubpath
  * @return {any}
  */
-export function deepPathCheck(storeName, path) {
+export function deepPathCheck(stateName, path) {
   const pathArray = path.split('.');
 
   return pathArray.reduce((prev, next) => {
@@ -204,5 +232,6 @@ export function deepPathCheck(storeName, path) {
     if (hasNextPath) {
       return prev[next];
     }
-  }, appState[storeName]);
+  }, store[stateName]);
 }
+

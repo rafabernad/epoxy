@@ -1,0 +1,91 @@
+<script src="./Epoxy.js"></script>
+<script>
+
+  /**
+   * Factory for extending classes with middlewares.
+   *
+   * This method creates a new Polymer Element class factory with
+   * overloaded lifecycle callbacks that provide bindings to MobX stores.
+   *
+   * @memberof Epoxy
+   * @param {function[]} Array of middleware functions to execture when calling 
+   *   extended class' dispatch method.
+   * @return {function} A class factory for extending classes with the provided
+   *   middlewares.
+   */
+  Epoxy.connect = function(mapStateToProps, mapDispatchToProps) {
+
+    return (Base) => {
+      class Mix extends Base {
+        constructor() {
+              super();
+              this._disposers = !this._disposers && [];
+          }
+          ready() {
+            this.dispatch = Epoxy.dispatch.bind(this, middlewares);
+            super.ready.apply(this, arguments);
+          }
+
+          connectedCallback() {
+            if (this.constructor.properties) {
+              const stateBindingsDisposers = Epoxy.addConnectedStateBinding(this);
+              this._disposers = this._disposers.concat(stateBindingsDisposers);
+            }
+
+            if (this.constructor.stateObservers) {
+              const stateObserversDisposers = Epoxy.addStateObservers(this);
+              this._disposers = this._disposers.concat(stateObserversDisposers);
+            }
+            super.connectedCallback.apply(this, arguments);
+          }
+
+          disconnectedCallback() {
+            this._disposers.forEach(disposer => disposer());
+            super.disconnectedCallback.apply(this, arguments);
+          }
+          _setProperty(property, value) {
+            const epoxyProperty = this.constructor.properties[property].statePath;
+            const strictMode = Epoxy.isStrictModeEnabled();
+            
+            if(!!epoxyProperty && strictMode && this[property] == Epoxy.deepPathCheck(epoxyProperty.store, epoxyProperty.path)) {
+              console.warn(`Since strict-mode is enabled, changing observed observable values outside actions is not allowed. Please wrap the code in an 'action' if this change is intended. Tried to modify: ${property} from store ${epoxyProperty.store}`);
+              return;
+            }
+            super._setProperty.apply(this, arguments);
+          }
+
+          /**
+           * Gets a field/property of the selected store
+           * @param  {string} store
+           * @param  {string} path
+           * @return {any}  field/property value
+           */
+          getStoreProperty(store, path) {
+            const stateProperty = Epoxy.deepPathCheck(store, path);
+
+            return toJS(stateProperty);
+          }
+      }
+    
+      for (let key of Object.keys(mapDispatchToProps)) {
+        let desc = Object.getOwnPropertyDescriptor(mapDispatchToProps, key);
+        Object.defineProperty(Mix, key, desc);
+      }
+
+      return Mix;
+    }
+  }
+
+  /**
+   * Class factory for extending classes without middlewares.
+   *
+   * This method creates a new Polymer Element class declaration with
+   * overloaded lifecycle callbacks that provide bindings to MobX stores.
+   *
+   * @memberof Epoxy
+   * @param {class} The Polymer element to extend with MobX bindings.
+   * @return {class} An extension of the original class overloaded lifecycle callbacks.
+   */
+  Epoxy.Mixin = Epoxy.MixinFactory();
+
+</script>
